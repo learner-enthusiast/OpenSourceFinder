@@ -5,10 +5,22 @@ from contextlib import asynccontextmanager
 from Database.db import db
 from app.config.settings import settings
 from app.routes.auth import router as auth_router
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
 
 # Configure logger
 logger = logging.getLogger("uvicorn.error")  # Use uvicorn's logger
 logger.setLevel(logging.INFO)
+
+# For debugger mode in vs code
+# if not logger.handlers:
+#     handler = logging.StreamHandler(sys.stdout)
+#     formatter = logging.Formatter(
+#         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+#     )
+#     handler.setFormatter(formatter)
+#     logger.addHandler(handler)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,9 +39,10 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to disconnect DB cleanly: {e}")
 
 
-app = FastAPI(
-    title="Open Source Finder API",
-    lifespan=lifespan
+app = FastAPI(title="Open Source Finder API", lifespan=lifespan)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=getattr(settings, "SECRET_KEY", secrets.token_urlsafe(32)),
 )
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +52,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+
+
 @app.get("/")
 def read_root():
     return {"message": "FastAPI server is running"}
