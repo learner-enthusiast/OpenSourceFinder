@@ -26,7 +26,8 @@ class AuthController:
     async def handle_callback(request: Request):
         try:
             token = await oauth.google.authorize_access_token(request)
-            logger.info("Succesfully recieved Oauth token from google")
+            if token:
+                logger.info("Succesfully recieved Oauth token from google")
 
             user_info = token.get("userinfo")
 
@@ -103,7 +104,7 @@ class AuthController:
         try:
             user = await get_current_user(MockToken(token))
             logger.info(f"Token validated for user :{user.email}")
-            return TokenResponse(acces_token=token, user=user)
+            return TokenResponse(access_token=token, user=user)
         except HTTPException:
             logger.error("Invalid token provided")
             raise HTTPException(status_code=401, detail="Invalid token")

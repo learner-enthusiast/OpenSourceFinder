@@ -15,15 +15,17 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    google_id: str
-    created_at: datetime
-    updated_at: datetime
+    googleId: str
+    createdAt: datetime
+    updatedAt: datetime
 
-    class config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+    class Config:
+        from_atrributes = True
