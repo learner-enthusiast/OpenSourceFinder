@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from Database.db import db
 from app.config.settings import settings
 from app.routes.auth import router as auth_router
+from app.routes.projects import router as project_router
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
 
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+app.include_router(project_router)
 
 
 @app.get("/")

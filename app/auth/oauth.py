@@ -5,15 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-config=Config('.env')
-oauth=OAuth(config)
+config = Config(".env")
+oauth = OAuth(config)
 
 oauth.register(
     name="google",
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
+    server_metadata_url=os.getenv("GOOGLE_OAUTH_URI"),
+    client_kwargs={"scope": "openid email profile"},
 )
