@@ -12,7 +12,7 @@ router = APIRouter(
 @router.get("")
 async def get_filtered_projects(
     language: ProjectFilters.Language | None = Query(
-        None, description="Programming language"
+        default=list(ProjectFilters.Language)[0], description="Programming language"
     ),
     stars: int | None = Query(None, description="Minimum number of stars"),
     sort: ProjectFilters.SortField | None = Query("stars", description="Sort field"),
