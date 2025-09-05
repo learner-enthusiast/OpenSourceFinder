@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from fastapi import HTTPException
 import httpx
-from app.utils.utils import ProjectFilters
 
 load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -32,17 +31,15 @@ async def search_repositories(filters: dict):
     if filters.get("activity"):
         query_parts.append(f"pushed:>{filters['activity']}")
     if filters.get("category"):
-        topics = ProjectFilters.get_github_topics(filters["category"])
-        if topics:
-            query_parts.extend(f"topic:{t}" for t in topics)
+        query_parts.append(f"topic:{filters['category']}")
 
     query = " ".join(query_parts)
     params = {
         "q": query,
         "sort": filters.get("sort") or "stars",
         "order": filters.get("order") or "desc",
-        "per_page": filters.get("per_page"),
-        "page": filters.get("page"),
+        "per_page": filters.get("per_page") or 10,
+        "page": filters.get("page") or 1,
     }
 
     try:

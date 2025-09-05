@@ -15,7 +15,7 @@ class Projects:
         page: int = Query(1),
         created: date | None = Query(None),
         activity: date | None = Query(None),
-        category: ProjectFilters.Category | None = Query(None),
+        category: str | None = Query(None),
     ):
         return await search_repositories(
             filters={
@@ -27,6 +27,12 @@ class Projects:
                 "page": page,
                 "created": created.isoformat() if created else None,
                 "activity": activity.isoformat() if activity else None,
-                "category": category.value if category else None,
+                "category": category if category else None,
             }
         )
+
+    @staticmethod
+    async def top_WeeklyProjects(
+        language: ProjectFilters.Language | None = Query(None),
+    ):
+        return await search_repositories(filters={"language": language.value})

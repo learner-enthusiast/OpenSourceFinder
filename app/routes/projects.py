@@ -25,9 +25,7 @@ async def get_filtered_projects(
     activity: date | None = Query(
         None, description="Repositories with activity (last push) after this date"
     ),
-    category: ProjectFilters.Category | None = Query(
-        None, description="Insert Project Categories"
-    ),
+    category: str | None = Query(None, description="Insert Project Categories"),
 ):
     """Get filtered projects"""
     return await Projects.get_projects(
@@ -41,3 +39,12 @@ async def get_filtered_projects(
         activity=activity,
         category=category,
     )
+
+
+@router.get("/topWeekly")
+async def get_topWeekly(
+    language: ProjectFilters.Language | None = Query(
+        default=list(ProjectFilters.Language)[0], description="Programming language"
+    ),
+):
+    return await Projects.top_WeeklyProjects(language=language)
