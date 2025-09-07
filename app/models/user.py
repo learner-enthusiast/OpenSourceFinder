@@ -15,7 +15,7 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    googleId: str
+    googleId: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
 
@@ -29,3 +29,12 @@ class TokenResponse(BaseModel):
 
     class Config:
         from_atrributes = True
+
+
+class OTPRequest(BaseModel):
+    identifier: str
+
+
+class OTPValidates(BaseModel):
+    identifier: str
+    otp: str

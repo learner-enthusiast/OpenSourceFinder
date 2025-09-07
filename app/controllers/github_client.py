@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 import httpx
 
 load_dotenv()
@@ -46,6 +47,6 @@ async def search_repositories(filters: dict):
         async with httpx.AsyncClient() as client:
             response = await client.get(BASE_URL, headers=HEADERS, params=params)
             response.raise_for_status()
-            return response.json()
+            return JSONResponse(status_code=200, data=response.json())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Github API Request Failed {e}")

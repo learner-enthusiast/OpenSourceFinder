@@ -7,6 +7,11 @@ from app.models.user import UserCreate, TokenResponse, UserResponse
 from app.config.settings import settings
 import httpx
 import logging
+from typing import Tuple
+import re
+import pyotp
+from datetime import datetime, timedelta, timezone
+from app.utils.utils import utils
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -125,5 +130,133 @@ class AuthController:
             raise HTTPException(
                 status_code=500, detail="Failed to fetch user information"
             )
+
+    @staticmethod
+    def _validate_identifier(identifier: str) -> Tuple[str, bool]:
+        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        phone_pattern = r"^\+?1?\d{9,15}$"
+
+        if re.match(email_pattern, identifier):
+            return ("email", True)
+        if re.match(phone_pattern, identifier):
+            return ("phone", True)
+        return (None, False)
+
+    @staticmethod
+    async def generate_and_send_otp(identifier: str):
+        """Generate and send OTP based on identifier type"""
+        try:
+            identifierType, is_valid = AuthController._validate_identifier(identifier)
+
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400, detail="Invalid email or phone number Format"
+                )
+
+            # Generate OTP
+
+            otp = pyotp.random_base32()[:6]
+            otp_hash = utils.hash_otp_hmac(otp)
+            current_time = datetime.now()
+            expiry_time = current_time + timedelta(minutes=2)
+
+            """Try to find user first"""
+
+            user = await db.user.find_unique(
+                where={"email" if identifierType == "email" else "phone": identifier}
+            )
+
+            if user:
+                await db.user.update(
+                    where={"id": user.id},
+                    data={
+                        "otp_hash": otp_hash,
+                        "otp_identifier": identifier,
+                        "otp_type": identifierType,
+                        "otp_attempts": 0,
+                        "otp_expires_at": expiry_time,
+                        "otp_created_at": current_time,
+                        "is_otp_used": False,
+                    },
+                )
+            else:
+                user = await db.user.create(
+                    data={
+                        "email" if identifierType == "email" else "phone": identifier,
+                        "otp_hash": otp_hash,
+                        "otp_identifier": identifier,
+                        "otp_type": identifierType,
+                        "otp_attempts": 0,
+                        "otp_expires_at": expiry_time,
+                        "otp_created_at": current_time,
+                        "is_otp_used": False,
+                        "name": "",
+                    }
+                )
+                sent = True
+            if identifierType == "email":
+                sent = await utils._send_email_otp(identifier, otp)
+
+            else:
+                sent = await utils._send_sms_otp(identifier, otp)
+            if not sent:
+                raise Exception(f"OTP Not sent for {identifier}")
+        except Exception as e:
+            logger.error(f"Failed to send OTP email: {e}")
+            raise HTTPException(status_code=500, detail="Failed to send OTP")
+
+    @staticmethod
+    async def _clear_otp_fields(user_id: int):
+        """Clear All otp related fields in userid"""
+
+        try:
+            await db.user.update(
+                where={"id": user_id},
+                data={
+                    "otp_hash": None,
+                    "otp_identifier": None,
+                    "otp_type": None,
+                    "otp_attempts": 0,
+                    "otp_expires_at": None,
+                    "otp_created_at": None,
+                    "is_otp_used": False,
+                },
+            )
+            logger.info(f"Cleared OTP fields for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error clearing OTP fields for user {user_id}:{e}")
+
+    @staticmethod
+    async def verify_login_otp(identifier: str, otp: str):
+        try:
+            user = await db.user.find_unique(where={"otp_identifier": identifier})
+
+            if not user or not user.otp_hash:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            if datetime.now(timezone.utc) > user.otp_expires_at:
+                await AuthController._clear_otp_fields(user.id)
+                raise HTTPException(status_code=400, detail="otp expired")
+
+            if user.otp_attempts >= user.otp_max_retries:
+                await AuthController._clear_otp_fields(user.id)
+                raise HTTPException(status_code=401, detail="Maximum attempts reached")
+
+            if not utils.verify_otp_hmac(otp, user.otp_hash):
+                await db.user.update(
+                    where={"id": user.id}, data={"otp_attempts": user.otp_attempts + 1}
+                )
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            access_token = create_access_token(data={"sub": str(user.id)})
+            await AuthController._clear_otp_fields(user.id)
+            return TokenResponse(
+                access_token=access_token, user=UserResponse.model_validate(user)
+            )
+        except Exception as e:
+            logger.error(f"Error verifying OTP :{e}")
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(status_code=500, details="Failed to verify OTP")
 
     # logout controller not written yet

@@ -8,7 +8,7 @@ def dev(c):
 
 @task
 def migrate(c, name):
-    c.run(f"prisma migrate dev --name {name}")
+    c.run(f"prisma migrate dev --name {name}", pty=True)
 
 
 @task

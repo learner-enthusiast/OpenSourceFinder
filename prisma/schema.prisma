@@ -19,12 +19,21 @@ model Project {
 
 model User{
   id Int @id @default(autoincrement())
-  email String @unique
+  email String? @unique
   name String
+  phone String? @unique
   picture String?
-  googleId String @unique @map("google_id")
+  googleId String? @unique @map("google_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("update_at")
+  otp_hash       String?   @map("otp_hash")        // Hashed OTP value (null = no active OTP)
+  otp_identifier String? @unique @map("otp_identifier")  // Email or phone where OTP was sent
+  otp_type       String?   @map("otp_type")        // "email" or "phone"
+  otp_attempts   Int       @default(0) @map("otp_attempts")
+  otp_max_retries Int      @default(3) @map("otp_max_retries")
+  otp_expires_at DateTime? @map("otp_expires_at")
+  otp_created_at DateTime? @map("otp_created_at")
+  is_otp_used    Boolean   @default(false) @map("is_otp_used")
 
   @@map("users")
 }
